@@ -1,0 +1,7 @@
+# entorno y compilaciones (el instalador se publica en Releases, no en el repositorio)
+.venv/
+build/
+dist/
+__pycache__/
+*.pyc
+*.log
