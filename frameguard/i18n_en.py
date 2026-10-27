@@ -128,6 +128,15 @@ EN: dict[str, str] = {
     "Se instalará Frameguard {new} encima de la versión actual ({current}). Tu cola, ajustes y logs se conservan.\n\nFrameguard se cerrará y volverá a abrirse solo. ¿Continuar?":
         "Frameguard {new} will be installed over the current version ({current}). Your queue, settings and logs are kept.\n\nFrameguard will close and reopen by itself. Continue?",
     "No se pudo lanzar el instalador:": "Could not launch the installer:",
+    "Descargando Frameguard {new} desde GitHub…": "Downloading Frameguard {new} from GitHub…",
+    "{done} de {total} MB": "{done} of {total} MB",
+    "No se pudo descargar la actualización:": "Could not download the update:",
+    "Puedes descargarla a mano desde {page}": "You can download it manually from {page}",
+    "El instalador de GitHub no tiene el tamaño esperado ({got} de {want} bytes).":
+        "The GitHub installer does not have the expected size ({got} of {want} bytes).",
+    "El instalador descargado no coincide con el publicado en GitHub (SHA-256 distinto).":
+        "The downloaded installer does not match the one published on GitHub (different SHA-256).",
+    "Descarga cancelada.": "Download cancelled.",
     "Frameguard sigue renderizando": "Frameguard is still rendering",
     "La cola continúa en segundo plano. Ábrelo desde el icono de la bandeja.":
         "The queue keeps going in the background. Open it from the tray icon.",
@@ -243,6 +252,9 @@ EN: dict[str, str] = {
     "Desactívalas si usas Frameguard por escritorio remoto con poca conexión.\nNo afectan a la velocidad del render.":
         "Turn them off if you use Frameguard over a slow remote desktop connection.\nThey don't affect render speed.",
     "ACTUALIZACIONES": "UPDATES",
+    "Buscar actualizaciones en GitHub": "Check for updates on GitHub",
+    "Avisa cuando se publica una versión nueva en github.com/Poyframe/frameguard.\nSi la carpeta de actualizaciones tiene esa misma versión o una más nueva, se usa la carpeta.":
+        "Lets you know when a new version is published on github.com/Poyframe/frameguard.\nIf the updates folder has that same version or a newer one, the folder is used.",
     r"Ej.: N:\carpeta\compartida\Frameguard\actualizaciones": r"e.g. N:\shared\Frameguard\updates",
     "Carpeta donde se dejan los instaladores nuevos (Frameguard-Setup-X.Y.Z.exe).\nTodos los PC que la vean recibirán el aviso de actualización.":
         "Folder where new installers are placed (Frameguard-Setup-X.Y.Z.exe).\nEvery PC that can see it gets the update notice.",

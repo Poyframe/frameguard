@@ -33,7 +33,8 @@ The interface is available in **English and Spanish** (it follows the Windows la
 ## Download
 
 Get the installer from the [Releases](../../releases) page and run it. It installs per user, without
-administrator rights. Your queue, settings and logs are kept when updating.
+administrator rights. Your queue, settings and logs are kept when updating. From 0.2.0 on, Frameguard tells you
+when a new version is out and installs it in one click (you can turn this off in Settings → Updates).
 
 - **Windows 10/11** only.
 - **Blender:** developed and tested with Blender 5.2 (it uses the 5.x compositor API). It finds installations in
@@ -68,9 +69,13 @@ python -m venv .venv
 powershell -ExecutionPolicy Bypass -File build.ps1   # dist\installer\Frameguard-Setup-<version>.exe
 ```
 
+For studios whose machines must not reach the internet, `build.ps1 -SinGitHub` builds an internal edition
+without the GitHub update module: it only updates from a shared network folder (see [README.es.md](README.es.md)).
+
 `build.ps1` refuses to build if `tools/check_names.py` finds undefined names or `tools/check_i18n.py` finds texts
 without an English translation. Tests live in `tools/pruebas/` (screenshots of every screen in both languages,
-real drag and drop, notifications, CPU usage) and `tools/smoke_test.ps1`. They use their own data folder and
+real drag and drop, notifications, CPU usage, update notices against a fake local GitHub) and
+`tools/smoke_test.ps1`. They use their own data folder and
 never touch your real queue or settings. Code comments are in Spanish.
 
 ## License

@@ -15,6 +15,7 @@ New-Item -ItemType Directory -Force $OutDir | Out-Null
 $home_ = Join-Path $OutDir ("home_" + (Get-Date -Format "HHmmss"))
 $env:FRAMEGUARD_HOME = $home_
 $env:FRAMEGUARD_DRY_POWER = "1"
+$env:FRAMEGUARD_GITHUB_API = "http://127.0.0.1:9/sin-red"  # nunca el GitHub real
 $engine = [Diagnostics.Process]::Start($exe, "--engine --port $port")
 $ok = $true
 try {
@@ -33,7 +34,8 @@ try {
         Write-Host ("{0} [{1}] conectada={2} filas={3} menú={4} panel={5} código={6}" -f $(if ($good) { "OK   " } else { "FALLO" }), $case, $res.connected, $res.rows, $res.drawer, $res.popup, $ui.ExitCode)
         if (-not $good -or $ui.ExitCode -ne 0) { $ok = $false }
     }
-    $errs = Select-String -Path (Join-Path $home_ "ui.log") -Pattern "ERROR|Traceback" -ErrorAction SilentlyContinue
+    # El nivel ERROR exacto (como tools\pruebas\comun.py): una línea INFO puede citar un «WinError» de Windows
+    $errs = Select-String -Path (Join-Path $home_ "ui.log") -Pattern " ERROR |Traceback" -CaseSensitive -ErrorAction SilentlyContinue
     if ($errs) { $ok = $false; Write-Host "FALLO: errores en ui.log:"; $errs | ForEach-Object { "   " + $_.Line } } else { Write-Host "OK    ui.log sin errores" }
 } finally {
     try { Invoke-RestMethod "http://127.0.0.1:$port/api/cmd" -Method Post -Body '{"cmd":"quit"}' -ContentType "application/json" | Out-Null } catch {}

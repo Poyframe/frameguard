@@ -1,10 +1,34 @@
 """Notas de cada versión (las muestra la ventana de Novedades al abrir tras actualizar).
 
 Al publicar una versión, añadir su entrada ARRIBA. Tipos: "nuevo", "mejora", "correccion".
-Cada punto va en los dos idiomas: (tipo, (título, texto) en español, (título, texto) en inglés)."""
+Cada punto va en los dos idiomas: (tipo, (título, texto) en español, (título, texto) en inglés).
+Un cuarto elemento opcional limita el punto a una edición (ver edition.py): "github" solo en la pública,
+"interna" solo en la de los estudios (compilada sin GitHub)."""
 from .i18n import lang
 
 CHANGELOG = [
+    {"version": "0.2.0", "date": "2026-10-27", "items": [
+        ("nuevo",
+         ("Avisos de versiones nuevas desde GitHub", "Al abrir y cada 6 horas, Frameguard mira si hay una versión "
+                                                     "nueva publicada en GitHub. «Actualizar ahora» la descarga y "
+                                                     "la instala, nunca a mitad de un render. Se puede desactivar en "
+                                                     "Ajustes → Actualizaciones. Si usas una carpeta de "
+                                                     "actualizaciones en la red, la carpeta sigue mandando cuando "
+                                                     "tiene la misma versión o una más nueva."),
+         ("Update notices from GitHub", "On startup and every 6 hours, Frameguard checks whether a new version has "
+                                        "been published on GitHub. “Update now” downloads and installs it, never in "
+                                        "the middle of a render. You can turn it off in Settings → Updates. If you "
+                                        "use an updates folder on the network, that folder still takes priority "
+                                        "when it has the same version or a newer one."),
+         "github"),
+        ("mejora",
+         ("Actualizaciones solo desde la carpeta de la red", "Esta versión de Frameguard no se conecta a internet "
+                                                              "para buscar actualizaciones: solo usa la carpeta de "
+                                                              "actualizaciones configurada en Ajustes."),
+         ("Updates only from the network folder", "This build of Frameguard never connects to the internet to look "
+                                                  "for updates: it only uses the updates folder set in Settings."),
+         "interna"),
+    ]},
     {"version": "0.1.9", "date": "2026-10-27", "items": [
         ("nuevo",
          ("En inglés y en español", "Frameguard usa el idioma de Windows del equipo: español si Windows está en "
@@ -171,10 +195,20 @@ CHANGELOG = [
 _MONTHS_EN = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
 
-def items(entry: dict, language: str | None = None) -> list[tuple[str, str, str]]:
-    """Puntos de una versión en el idioma actual: [(tipo, título, texto)]."""
+def _for_this_edition(item: tuple, github: bool | None = None) -> bool:
+    if len(item) < 4:
+        return True
+    if github is None:
+        from .edition import HAS_GITHUB
+        github = HAS_GITHUB
+    return item[3] == ("github" if github else "interna")
+
+
+def items(entry: dict, language: str | None = None, github: bool | None = None) -> list[tuple[str, str, str]]:
+    """Puntos de una versión en el idioma actual y para esta edición: [(tipo, título, texto)].
+    github=True/False fuerza la edición (p. ej. para escribir las notas de cada instalador)."""
     i = 2 if (language or lang()) == "en" else 1
-    return [(it[0], *it[i]) for it in entry["items"]]
+    return [(it[0], *it[i]) for it in entry["items"] if _for_this_edition(it, github)]
 
 
 def date(entry: dict, language: str | None = None) -> str:

@@ -8,10 +8,11 @@ from pathlib import Path
 from PySide6.QtCore import QEasingCurve, QObject, QPoint, QRectF, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QActionGroup, QColor, QFont, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import (QApplication, QComboBox, QFileDialog, QFrame, QGraphicsOpacityEffect, QHBoxLayout,
-                               QLabel, QMainWindow, QMenu, QMessageBox, QPushButton, QScrollArea,
+                               QLabel, QMainWindow, QMenu, QMessageBox, QProgressDialog, QPushButton, QScrollArea,
                                QSystemTrayIcon, QVBoxLayout, QWidget)
 
 from .. import __version__, paths, scan, updater, util
+from ..edition import HAS_GITHUB, github
 from .. import changelog, sounds
 from .. import i18n
 from ..i18n import fmt_int, plural, tr
@@ -48,6 +49,8 @@ class _HeaderRow(QWidget):
 class _UpdateBridge(QObject):
     """Trae el resultado de la búsqueda de actualizaciones (hilo aparte: la red puede ir lenta)."""
     found = Signal(object)
+    progress = Signal(int, int)    # descarga desde GitHub: bytes recibidos, total
+    downloaded = Signal(object)    # (ruta del instalador o None, mensaje de error o None)
 
 
 class _ScanBridge(QObject):
@@ -356,6 +359,9 @@ class MainWindow(QMainWindow):
         self._upd_checked = False
         self._upd = _UpdateBridge()
         self._upd.found.connect(self._on_update_found)
+        self._upd.progress.connect(self._on_download_progress)
+        self._upd.downloaded.connect(self._on_downloaded)
+        self.download_dlg = None
         self.upd_timer = QTimer(self)
         self.upd_timer.timeout.connect(self.check_updates)
         self.upd_timer.start(6 * 3600 * 1000)
@@ -1147,10 +1153,15 @@ class MainWindow(QMainWindow):
 
     # ------------------------------------------------------------------ actualizaciones
     def check_updates(self, manual: bool = False):
-        folder = (self.st.get("settings") or {}).get("update_folder", "")
-        if not folder:
+        """Carpeta de actualizaciones y/o GitHub (Ajustes → Actualizaciones). La carpeta manda si tiene la misma
+        versión o una más nueva; sin red, GitHub simplemente no avisa."""
+        s = self.st.get("settings") or {}
+        folder = s.get("update_folder", "")
+        use_github = HAS_GITHUB and bool(s.get("update_github", True))  # la edición interna nunca mira GitHub
+        if not folder and not use_github:
             return
-        threading.Thread(target=lambda: self._upd.found.emit((updater.newest(folder), manual)), daemon=True).start()
+        threading.Thread(target=lambda: self._upd.found.emit((updater.find_update(folder, use_github), manual)),
+                         daemon=True).start()
 
     def _on_update_found(self, payload):
         item, manual = payload
@@ -1162,24 +1173,85 @@ class MainWindow(QMainWindow):
                                         new=item["label"], current=__version__) + ("  " + notes if notes else ""))
             self.banner_text.setToolTip(item["notes"])
             self.banner.show()
+        elif manual and not item:  # p. ej. se desactivó GitHub en Ajustes: el aviso de antes ya no vale
+            self.update_item = None
+            self.banner.hide()
 
     def skip_update(self):
         if self.update_item:
             prefs().setValue("skip_version", self.update_item["label"])
         self.banner.hide()
 
-    def install_update(self, item):
-        if not item:
-            return
+    def _rendering(self) -> bool:
         if self.st.get("queue", {}).get("running") or self.st.get("running_job"):
+            logging.info("Actualización aplazada: la cola está renderizando")
             QMessageBox.information(self, "Frameguard", tr("La cola está renderizando. Pausa la cola o espera a que "
                                     "termine para actualizar: nunca se actualiza a mitad de un render."))
+            return True
+        return False
+
+    def install_update(self, item):
+        if not item or self._rendering():
             return
         if QMessageBox.question(self, tr("Instalar versión"), tr(
                 "Se instalará Frameguard {new} encima de la versión actual ({current}). Tu cola, ajustes y logs se "
                 "conservan.\n\nFrameguard se cerrará y volverá a abrirse solo. ¿Continuar?",
                 new=item["label"], current=__version__)) != QMessageBox.Yes:
             return
+        if item.get("url"):  # de GitHub: primero se descarga a %TEMP%
+            self._download_update(item)
+        else:
+            self._run_installer(item)
+
+    def _download_update(self, item):
+        self._dl_item, self._dl_cancel = item, threading.Event()
+        dlg = QProgressDialog(tr("Descargando Frameguard {new} desde GitHub…", new=item["label"]), tr("Cancelar"),
+                              0, 100, self)
+        dlg.setWindowTitle("Frameguard")
+        dlg.setWindowModality(Qt.WindowModal)
+        dlg.setMinimumDuration(0)
+        dlg.setAutoClose(False)
+        dlg.setAutoReset(False)
+        dlg.setMinimumWidth(420)
+        dlg.canceled.connect(self._dl_cancel.set)
+        dlg.setValue(0)
+        dlg.show()
+        self.download_dlg = dlg
+
+        def work():
+            try:
+                path = github.download(item, lambda done, total: self._upd.progress.emit(done, total), self._dl_cancel)
+                self._upd.downloaded.emit((str(path), None))
+            except github.UpdateError as e:
+                self._upd.downloaded.emit((None, str(e)))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _on_download_progress(self, done: int, total: int):
+        if self.download_dlg is not None and total:
+            self.download_dlg.setValue(int(done * 100 / total))
+            self.download_dlg.setLabelText(tr("Descargando Frameguard {new} desde GitHub…", new=self._dl_item["label"])
+                                           + "\n" + tr("{done} de {total} MB", done=fmt_int(done // 1_048_576),
+                                                       total=fmt_int(total // 1_048_576)))
+
+    def _on_downloaded(self, payload):
+        path, error = payload
+        if self.download_dlg is not None:
+            self.download_dlg.canceled.disconnect()  # al cerrarlo también emite «canceled»
+            self.download_dlg.close()
+            self.download_dlg = None
+        if self._dl_cancel.is_set():  # cancelada por el usuario
+            return
+        if error:
+            logging.warning("No se pudo descargar la actualización: %s", error)
+            page = self._dl_item.get("page") or github.RELEASES_PAGE
+            QMessageBox.warning(self, "Frameguard", tr("No se pudo descargar la actualización:") + f"\n{error}\n\n"
+                                + tr("Puedes descargarla a mano desde {page}", page=page))
+            return
+        if self._rendering():  # la cola pudo arrancar mientras se descargaba
+            return
+        self._run_installer({**self._dl_item, "path": path})
+
+    def _run_installer(self, item):
         self.client.send("quit")
         try:
             updater.launch_installer(item)

@@ -47,7 +47,11 @@ def _screenshot_hook(win: MainWindow, client=None):
             json.dump({"connected": bool(client and client.connected), "rows": len(win.list.rows),
                        "jobs": len(win.st.get("jobs") or []), "drawer": win.drawer.isVisible(),
                        "popup": win.popup.isVisible(), "size": [win.width(), win.height()],
-                       "toasts": len(win.toasts.toasts)}, f)
+                       "toasts": len(win.toasts.toasts),
+                       "banner": win.banner_text.text() if win.banner.isVisible() else "",
+                       "update_source": (win.update_item or {}).get("source"),
+                       "downloading": win.download_dlg is not None,
+                       "update_enabled": win.b_upd_now.isEnabled()}, f)
         for i, t in enumerate(win.toasts.toasts):
             t.grab().save(target.replace(".png", f"_aviso{i}.png"))
         if win.whats_new is not None and win.whats_new.isVisible():
@@ -58,6 +62,8 @@ def _screenshot_hook(win: MainWindow, client=None):
             d.show()
             QApplication.processEvents()
             d.grab().save(target.replace(".png", "_ajustes.png"))
+            with open(target + ".ajustes.json", "w", encoding="utf-8") as f:
+                json.dump({"github_checkbox": d.github is not None}, f)
             d.close()
         modal = QApplication.activeModalWidget()
         if modal is not None and modal is not win.whats_new:  # p. ej. la lista de carpetas escaneadas
@@ -105,6 +111,26 @@ def _screenshot_hook(win: MainWindow, client=None):
             win.after.showPopup()
         if os.environ.get("FRAMEGUARD_SCREENSHOT_SCAN"):  # varias carpetas -> lista para elegir
             win.scan_folders(os.environ["FRAMEGUARD_SCREENSHOT_SCAN"].split("|"))
+
+    if os.environ.get("FRAMEGUARD_SCREENSHOT_UPDATE"):
+        # Pulsa «Actualizar ahora» en cuanto sale el aviso y confirma; captura la descarga a medias.
+        # Si termina, la ventana se cierra sola (como al actualizar de verdad) y no llega a la captura final.
+        from PySide6.QtWidgets import QMessageBox
+        QMessageBox.question = lambda *a, **k: QMessageBox.Yes
+
+        def press(tries=0):
+            if not win.banner.isVisible():
+                if tries < 60:
+                    QTimer.singleShot(200, lambda: press(tries + 1))
+                return
+            QTimer.singleShot(900, lambda: win.download_dlg is not None and win.download_dlg.grab().save(
+                target.replace(".png", "_descarga.png")))
+            if win.b_upd_now.isEnabled():
+                win.b_upd_now.click()
+            else:  # con la cola renderizando el botón está apagado: se intenta como desde «Versiones…»
+                win.install_update(win.update_item)
+
+        QTimer.singleShot(500, press)
 
     QTimer.singleShot(delay - 1200, popup)
     QTimer.singleShot(delay - 1500, extras)

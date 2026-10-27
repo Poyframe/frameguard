@@ -1,9 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PyInstaller: genera dist\Frameguard\Frameguard.exe (carpeta, sin consola). Se usa desde build.ps1.
+import os
 import re
 from pathlib import Path
 
 ROOT = Path(SPECPATH)
+# Edición interna (build.ps1 -SinGitHub): el .exe se compila SIN el módulo que habla con GitHub
+SIN_GITHUB = os.environ.get("FRAMEGUARD_SIN_GITHUB_BUILD") == "1"
+GITHUB_MODULE = "frameguard.github_updates"
 VERSION = re.search(r'__version__\s*=\s*"([^"]+)"', (ROOT / "frameguard" / "__init__.py").read_text()).group(1)
 nums = [int(x) for x in VERSION.split(".")] + [0]
 
@@ -31,9 +35,14 @@ a = Analysis(
     hiddenimports=["frameguard.engine", "frameguard.ui.app"],
     excludes=["tkinter", "PySide6.QtWebEngineCore", "PySide6.QtWebEngineWidgets", "PySide6.QtQuick",
               "PySide6.QtQml", "PySide6.Qt3DCore", "PySide6.QtMultimedia", "PySide6.QtPdf", "PySide6.QtCharts",
-              "PySide6.QtDataVisualization", "PySide6.QtSql", "PySide6.QtTest", "PySide6.QtDesigner"],
+              "PySide6.QtDataVisualization", "PySide6.QtSql", "PySide6.QtTest", "PySide6.QtDesigner"]
+             + ([GITHUB_MODULE] if SIN_GITHUB else []),
     noarchive=False,
 )
+if SIN_GITHUB:
+    a.pure = [m for m in a.pure if m[0] != GITHUB_MODULE]
+    assert not any(m[0] == GITHUB_MODULE for m in a.pure), "el módulo de GitHub se coló en la edición interna"
+    print("Edición interna: compilada SIN", GITHUB_MODULE)
 # Fuera lo que una ventana Qt Widgets no usa (OpenGL por software, Quick/QML, PDF, formatos de imagen extra).
 DROP = ("opengl32sw.dll", "qt6quick", "qt6qml", "qt6pdf", "qdirect2d", "qtiff", "qwebp", "qpdf",
         "qt6virtualkeyboard", "qtvirtualkeyboard", "qt6opengl.dll", "qt6openglwidgets")

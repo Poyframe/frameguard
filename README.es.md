@@ -31,7 +31,8 @@ La interfaz está en **español e inglés** (sigue el idioma de Windows; se pued
 ## Descarga
 
 Descarga el instalador desde [Releases](../../releases) y ejecútalo. Se instala por usuario, sin permisos de
-administrador. Al actualizar se conservan la cola, los ajustes y los logs.
+administrador. Al actualizar se conservan la cola, los ajustes y los logs. Desde la 0.2.0, Frameguard avisa
+cuando sale una versión nueva y la instala con un clic (se puede desactivar en Ajustes → Actualizaciones).
 
 - Solo **Windows 10/11**.
 - **Blender:** desarrollado y probado con Blender 5.2 (usa la API del compositor de la serie 5). Encuentra solo
@@ -96,6 +97,8 @@ coincidan. Las notas de versión (`frameguard/changelog.py`) llevan cada punto e
 - `tools/pruebas/arrastre.py`: arrastre real desde otro programa (mueve el ratón unos segundos).
 - `tools/pruebas/avisos.py`: los avisos se van solos solo con el usuario presente.
 - `tools/pruebas/cpu.py --exe ...`: consumo de la ventana en reposo, renderizando y minimizada.
+- `tools/pruebas/actualizaciones.py [--exe ...]`: avisos de GitHub y de la carpeta contra un servidor local que
+  imita a GitHub (descarga, errores, prioridad de la carpeta y nunca durante un render).
 
 El `.blend` de prueba lo genera `tools/make_fixture.py` (las pruebas lo crean solas si falta). Todas usan su
 propia carpeta de datos y nunca tocan la cola, los ajustes ni el registro del usuario.
@@ -109,15 +112,35 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 Genera `dist\installer\Frameguard-Setup-<versión>.exe`. Requiere Inno Setup 6. No compila si
 `tools\check_names.py` encuentra nombres sin definir o `tools\check_i18n.py` encuentra textos sin traducir.
 
-## Publicar una actualización en una red local
+## Publicar una actualización
 
 1. Subir `__version__` en `frameguard/__init__.py` y añadir la entrada en `frameguard/changelog.py`.
 2. Ejecutar `build.ps1`.
-3. Copiar `Frameguard-Setup-X.Y.Z.exe` a la carpeta de actualizaciones configurada en **Ajustes**
-   (opcionalmente con un `Frameguard-X.Y.Z-novedades.txt`).
-4. Cada PC que vea esa carpeta mostrará un aviso: **Actualizar ahora**, **Más tarde** u **Omitir esta versión**.
+3. **GitHub** (llega a todos): crear la release `vX.Y.Z` con `Frameguard-Setup-X.Y.Z.exe` adjunto. Las notas
+   van en inglés, una línea `---` y luego en español, con los puntos como `- **Título:** texto`: de ahí sale el
+   resumen del aviso en cada idioma.
+4. **Red local** (opcional): copiar `Frameguard-Setup-X.Y.Z.exe` a la carpeta de actualizaciones configurada en
+   **Ajustes** (opcionalmente con un `Frameguard-X.Y.Z-novedades.txt`).
+5. Frameguard (desde la 0.2.0) lo comprueba al abrir y cada 6 horas y muestra un aviso: **Actualizar ahora**,
+   **Más tarde** u **Omitir esta versión**. Si la carpeta tiene la misma versión que GitHub o una más nueva, manda
+   la carpeta; si no, el instalador se descarga de GitHub a `%TEMP%` (con progreso y comprobando tamaño y
+   SHA-256). Sin internet no avisa de nada. GitHub se puede desactivar en **Ajustes → Actualizaciones**.
    La instalación va encima de la anterior (AppId fijo) y nunca durante un render. Para volver atrás:
-   **Ajustes → Versiones…**.
+   **Ajustes → Versiones…** (con la carpeta).
+
+### Edición interna (sin GitHub)
+
+Para los PC de un estudio que no deben conectarse a internet para actualizarse:
+
+```bash
+powershell -ExecutionPolicy Bypass -File build.ps1 -SinGitHub
+```
+
+Genera `dist\installer-interna\Frameguard-Setup-X.Y.Z.exe`. Ese `.exe` se compila **sin** el módulo
+`frameguard/github_updates.py`, así que no tiene ningún código que se conecte a GitHub: solo se actualiza desde la
+carpeta de la red. `build.ps1` comprueba el contenido del `.exe` y no termina si el módulo se cuela. En Ajustes no
+aparece la casilla de GitHub, y las Novedades muestran los puntos de esa edición (ver `frameguard/changelog.py`).
+`tools/pruebas/interna.py` lo verifica con un «GitHub» falso que cuenta las peticiones.
 
 ## Licencia
 

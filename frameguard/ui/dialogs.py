@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog, QDou
                                QSizePolicy, QSpinBox, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget)
 
 from .. import __version__, paths, updater
+from ..edition import HAS_GITHUB
 from ..i18n import plural, tr
 from .prefs import prefs
 from .theme import IC
@@ -223,7 +224,7 @@ class SettingsDialog(QDialog):
         self.setMinimumSize(760, 480)
         screen = (parent.screen() if parent is not None else None)
         avail = screen.availableGeometry().height() if screen is not None else 900
-        self.resize(980, min(700, avail - 60))
+        self.resize(980, min(740, avail - 60))
         outer = QVBoxLayout(self)
         outer.setContentsMargins(16, 14, 16, 14)
         outer.setSpacing(10)
@@ -392,6 +393,14 @@ class SettingsDialog(QDialog):
 
         # --- ACTUALIZACIONES
         box, lay = _section(IC["download"], tr("ACTUALIZACIONES"))
+        self.github = None
+        if HAS_GITHUB:  # la edición interna (sin código de GitHub) solo tiene la carpeta
+            self.github = QCheckBox(tr("Buscar actualizaciones en GitHub"))
+            self.github.setChecked(bool(settings.get("update_github", True)))
+            self.github.setToolTip(tr("Avisa cuando se publica una versión nueva en github.com/Poyframe/frameguard.\n"
+                                      "Si la carpeta de actualizaciones tiene esa misma versión o una más nueva, "
+                                      "se usa la carpeta."))
+            lay.addWidget(self.github)
         self.upd = QLineEdit(settings.get("update_folder", ""))
         self.upd.setCursorPosition(0)  # que se vea el principio de la ruta (la unidad)
         self.upd.setPlaceholderText(tr(r"Ej.: N:\carpeta\compartida\Frameguard\actualizaciones"))
@@ -459,6 +468,7 @@ class SettingsDialog(QDialog):
         return {"blender_path": self.blender.currentData(), "max_attempts": self.attempts.value(),
                 "stall_minutes": self.stall.value(), "exit_grace_seconds": self.grace.value(),
                 "disable_save_output": self.save_out.isChecked(), "update_folder": self.upd.text().strip(),
+                "update_github": self.github.isChecked() if self.github is not None else False,
                 "notify_shot": self.n_shot.isChecked(), "notify_queue": self.n_queue.isChecked(),
                 "notify_failed": self.n_fail.isChecked(), "notify_sound": self.n_sound.isChecked(),
                 "limit_resources": self.limit.isChecked(), "limit_percent": int(self.limit_pct.currentData()),

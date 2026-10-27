@@ -118,7 +118,7 @@ results += [
     shot("menu", FRAMEGUARD_SCREENSHOT_DRAWER="1"),
     shot("panel", FRAMEGUARD_SCREENSHOT_POPUP="1", FRAMEGUARD_SCREENSHOT_POPUP_INDEX="1"),
 ]
-(P.home / "ventana.ini").write_text("[General]\nlast_seen_version=0.1.8\n", encoding="utf-8")  # novedades de la 0.1.9
+(P.home / "ventana.ini").write_text("[General]\nlast_seen_version=0.1.9\n", encoding="utf-8")  # novedades de la 0.2.0
 results.append(shot("novedades", FRAMEGUARD_SCREENSHOT_WHATSNEW="1"))
 results.append((OUT / "novedades_novedades.png").exists())
 errs = P.errors()

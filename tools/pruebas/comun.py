@@ -21,6 +21,7 @@ PROJ = Path(__file__).resolve().parents[2]
 WORK = Path(os.environ.get("TEMP", PROJ)) / "frameguard_pruebas"
 PY = PROJ / ".venv" / "Scripts" / "python.exe"
 BLENDER = Path(r"C:\Program Files\Blender Foundation\Blender 5.2\blender.exe")
+NO_GITHUB = "http://127.0.0.1:9/sin-red"  # las pruebas nunca consultan el GitHub real (en el puerto 9 nadie escucha)
 sys.path.insert(0, str(PROJ))
 
 
@@ -48,7 +49,7 @@ class Prueba:
         if seen_version:  # Novedades ya vistas: si no, su ventana modal tapa la principal
             (self.home / "ventana.ini").write_text(f"[General]\nlast_seen_version={seen_version}\n", encoding="utf-8")
         self.env = {**os.environ, "FRAMEGUARD_HOME": str(self.home), "FRAMEGUARD_DRY_POWER": "1",
-                    "FRAMEGUARD_THEME": "dark"}
+                    "FRAMEGUARD_THEME": "dark", "FRAMEGUARD_GITHUB_API": NO_GITHUB}
         if lang:
             self.env["FRAMEGUARD_LANG"] = lang
         self.start_engine()

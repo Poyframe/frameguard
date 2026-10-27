@@ -48,6 +48,7 @@ DEFAULT_SETTINGS = {
     "limit_percent": 50,          # % de hilos del procesador para Blender cuando se limita
     "language": "auto",           # idioma de avisos y errores: auto (el de Windows), es, en
     "update_folder": "",          # carpeta (p. ej. en la red) con los instaladores de nuevas versiones
+    "update_github": True,        # avisar también de las versiones publicadas en GitHub (la carpeta manda)
     "notify_shot": True,          # aviso al terminar cada shot
     "notify_queue": True,         # aviso al terminar toda la cola
     "notify_failed": True,        # aviso cuando un shot falla
